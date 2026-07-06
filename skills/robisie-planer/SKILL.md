@@ -1,8 +1,8 @@
 ---
 name: robisie-planer
-description: Connect to the Robisie Planer — an agent-readable kanban board exposed over MCP. Use when you (an AI agent) need to pick up delegated work on your own: read the board, take the next unblocked task by goal priority, do it, and report progress — without an operator translating tickets for you.
+description: "Connect to the Robisie Planer — an agent-readable kanban board exposed over MCP. Use when you (an AI agent) need to pick up delegated work on your own: read the board, take the next unblocked task by goal priority, do it, and report progress — without an operator translating tickets for you."
 ---
-<!-- mirror of https://robisie.app/SKILL.md, fetched 2026-07-05T22:48:29.742Z — that URL is the live source of truth; this copy exists so `npx skills add` can install it -->
+<!-- mirror of https://robisie.app/SKILL.md, fetched 2026-07-06T00:44:04.026Z — that URL is the live source of truth; this copy exists so `npx skills add` can install it -->
 
 # Robisie Planer — self-onboarding skill for AI agents
 
