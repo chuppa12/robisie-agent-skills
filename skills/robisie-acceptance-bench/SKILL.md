@@ -2,7 +2,7 @@
 name: robisie-acceptance-bench
 description: Learn the acceptance-bench procedure — how to submit finished work for review with evidence, and how a reviewer confirms it is really done. Use this when you (an AI agent) move a task to review, or when you are asked to accept or reject work another agent finished.
 ---
-<!-- mirror of https://robisie.app/skills/acceptance-bench/SKILL.md, fetched 2026-07-05T22:48:29.784Z — that URL is the live source of truth; this copy exists so `npx skills add` can install it -->
+<!-- mirror of https://robisie.app/skills/acceptance-bench/SKILL.md, fetched 2026-08-29T08:03:31Z — that URL is the live source of truth; this copy exists so `npx skills add` can install it -->
 
 # Robisie acceptance-bench — evidence-based acceptance for AI agent work
 
@@ -12,7 +12,7 @@ anyone know this work is actually done?** This skill is the answer — a small, 
 called the acceptance-bench. It separates *work that is claimed done* from *work that is confirmed
 done*, and it applies to **any** delegated work: code, prose, data, designs, decisions.
 
-The mechanics run on the Robisie Planer (the agent-readable kanban board this domain serves over
+The mechanics run on robisie (the agent-readable kanban board this domain serves over
 MCP) and need exactly three tools — `append_detail`, `update_task`, `get_task` — and three
 statuses. If you can call those tools, you can run the whole procedure.
 
@@ -24,6 +24,10 @@ because the first happened. Skip that separation and you don't have an acceptanc
 have a rubber stamp.
 
 Everything below is machinery for keeping those two facts separate and checkable.
+
+The agent submission loop is:
+
+Call `get_next_task`, then `reserve_task`; do the work; call `append_detail` with evidence; call `get_task` and verify the evidence is present; only then call `update_task` with `status: "in_review"`.
 
 ## The protocol of proof
 
@@ -43,7 +47,8 @@ Attach the evidence to the card, then submit it:
 
 ```
 append_detail(taskId, { evidence: "PR #42 — checkout test: failing → passing" })
-update_task(taskId, { status: "do_akceptacji" })
+get_task(taskId) // verify the evidence is present
+update_task(taskId, { status: "in_review" })
 ```
 
 ⚠️ **Always attach evidence with `append_detail`**, which merges new fields into the card's
@@ -55,12 +60,12 @@ very proof this procedure depends on.
 
 A submitted card moves through three states — these are the literal `status` values:
 
-- **`do_akceptacji`** (in review) — *submitted*: the agent claims the work is finished, evidence
+- **`in_review`** — *submitted*: the agent claims the work is finished, evidence
   attached. Nothing is confirmed yet.
-- **`wdrożone`** (delivered) — *delivered*: the output exists where it is supposed to — the email
+- **`delivered`** — *delivered*: the output exists where it is supposed to — the email
   went out, the feature is deployed, the document is filed. But nobody other than the agent has
   confirmed it is **correct** yet.
-- **`zrobione`** (done) — *confirmed*: a reviewer checked the evidence and it holds up. This is
+- **`done`** — *confirmed*: a reviewer checked the evidence and it holds up. This is
   the only state that means "done".
 
 Why the middle state exists: **"delivered" and "actually correct" are different facts.** An email
@@ -68,8 +73,8 @@ can be sent and wrong. A feature can be deployed and broken. A report can be fil
 its central number. Collapsing "delivered" into "done" is exactly how a broken thing gets marked
 finished before anyone has looked at it.
 
-And the closing rule: **only the reviewer moves a card to `zrobione` — never the agent that did
-the work.** Even when one person plays both roles, the move to `zrobione` must be its own
+And the closing rule: **only the reviewer moves a card to `done` — never the agent that did
+the work.** Even when one person plays both roles, the move to `done` must be its own
 deliberate act, performed after looking at the evidence — not a reflex bundled into the submission.
 
 ## Reviewing beyond the code/PR frame — two worked examples
@@ -81,22 +86,24 @@ The agent fixes it, then attaches evidence and submits:
 
 ```
 append_detail(taskId, { evidence: "PR #87 — repro test added; before: 500 on submit, after: order created. CI green." })
-update_task(taskId, { status: "do_akceptacji" })
+get_task(taskId) // verify the evidence is present
+update_task(taskId, { status: "in_review" })
 ```
 
 The reviewer opens the PR link, reads the test output, and confirms the failing case now passes.
-Once the fix is live and behaves, the card moves through `wdrożone` to `zrobione`.
+Once the fix is live and behaves, the card moves through `delivered` to `done`.
 
 **Example B — not code.** Task: *"Draft the onboarding email for new customers."*
 There is no diff and no test suite. The agent attaches the draft itself, plus what changed:
 
 ```
 append_detail(taskId, { evidence: "Draft: <link>. Summary: rewrote the opening to lead with the 30-second setup, per the brief; dropped the feature list." })
-update_task(taskId, { status: "do_akceptacji" })
+get_task(taskId) // verify the evidence is present
+update_task(taskId, { status: "in_review" })
 ```
 
 The reviewer reads the actual email — not a diff — and checks it against the brief: right audience,
-right claims, right tone. If it holds up, they confirm it and move the card to `zrobione`; if
+right claims, right tone. If it holds up, they confirm it and move the card to `done`; if
 not, it goes back with a note saying what to change.
 
 The point of Example B: the exact same two-role separation and the exact same evidence requirement
@@ -114,7 +121,7 @@ work is contracts, spreadsheets, or slide decks, the bench works unchanged.
 - **Evidence silently erased.** Somebody called `update_task` with a full `details` object and
   wiped the evidence attached earlier. Use `append_detail` for every addition; reach for
   `update_task`'s `details` only when you mean to replace everything.
-- **Treating `wdrożone` (delivered) as the finish line.** It is the still-open middle state. The
+- **Treating `delivered` as the finish line.** It is the still-open middle state. The
   output exists, but until a reviewer confirms it, the card is not done — it is merely out in the
   world.
 
@@ -123,18 +130,19 @@ work is contracts, spreadsheets, or slide decks, the bench works unchanged.
 ```
 1. Finish the work.
 2. append_detail(taskId, { evidence: "<link, diff, test output, or summary>" })
-3. update_task(taskId, { status: "do_akceptacji" })
-4. (delivery happens) → status becomes "wdrożone"
-5. Reviewer opens get_task(taskId) and checks the evidence.
-6. Reviewer moves it to "zrobione" — only after checking, never on the agent's word alone.
+3. get_task(taskId) and verify the evidence is present.
+4. update_task(taskId, { status: "in_review" })
+5. (delivery happens) → status becomes "delivered"
+6. Reviewer opens get_task(taskId) and checks the evidence.
+7. Reviewer moves it to "done" — only after checking, never on the agent's word alone.
 ```
 
 ## Troubleshooting
 
-- **A card sits in `do_akceptacji` with no movement** — nobody has reviewed it yet. That is not a
+- **A card sits in `in_review` with no movement** — nobody has reviewed it yet. That is not a
   bug; the procedure is *waiting for a reviewer*, which is the whole point. Nudge whoever reviews —
   do not "unblock" the card by moving it forward yourself.
-- **I'm both the reviewer AND the one who did the work** — still perform steps 5–6 of the quick
+- **I'm both the reviewer AND the one who did the work** — still perform steps 6–7 of the quick
   reference as a distinct, deliberate act: reopen the card with `get_task`, read the evidence the
   way a stranger would, then move it. Do not fold the review into the submission.
 - **How much evidence is enough?** — ask: could a skeptical reviewer check the claim without
